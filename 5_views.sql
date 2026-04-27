@@ -24,7 +24,7 @@ GROUP BY user_id;
 
 INSERT INTO orders VALUES (1, 1000);
 
-SELECT * from user_spending_summary;;  
+SELECT * from user_spending_summary;
 
 REFRESH MATERIALIZED VIEW user_spending_summary;
 

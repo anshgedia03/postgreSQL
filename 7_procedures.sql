@@ -20,21 +20,21 @@ create or replace procedure transfer(
    receiver int,
    amount dec
 )
-language plpgsql
 as $$
 begin
-    -- subtracting the amount from the sender's account
+
     update accounts
     set balance = balance - amount
     where id = sender;
 
-    -- adding the amount to the receiver's account
     update accounts
     set balance = balance + amount
     where id = receiver;
 
     commit;
-end;$$;
+
+    SELECT * FROM accounts;
+end $$ language plpgsql;
 
 
 call transfer(1,2,1000);

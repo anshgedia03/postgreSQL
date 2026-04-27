@@ -1,96 +1,77 @@
 -- Active: 1776843426475@@127.0.0.1@5432@employee
-CREATE DATABASE employee;
-
-
-CREATE TABLE employees (
+CREATE TABLE emp (
   id SERIAL PRIMARY KEY,
-  name TEXT,
-  salary DECIMAL,
-  updated_at TIMESTAMP
+  fname VARCHAR(50),
+  lname VARCHAR(50),
+  salary DECIMAL(10,2),
+  locations VARCHAR(100),
+  age INT
 );
 
-CREATE TABLE audit_log (
-  id SERIAL,
-  action TEXT,
-  emp_id INT,
-  action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+INSERT INTO emp (fname, lname, salary, locations, age)
+VALUES
+  ('Ansh', 'Gedia', 50000, 'Mumbai', 22),
+  ('Rahul', 'Sharma', 45000, 'Delhi', 25),
+  ('Priya', 'Patel', 60000, 'Ahmedabad', 24),
+  ('Amit', 'Verma', 55000, 'Pune', 27),
+  ('Neha', 'Singh', 48000, 'Bangalore', 23);
+
+
+SELECT * FROM emp;
+
+CREATE TABLE budget (
+    budget_id INT PRIMARY KEY DEFAULT 1,
+    allocated_budget INT NOT NULL DEFAULT 1500000,
+    used_budget INT NOT NULL DEFAULT 0,
+    CHECK (used_budget <= allocated_budget)
 );
 
-CREATE OR REPLACE FUNCTION log_action()
+INSERT INTO budget (budget_id, allocated_budget, used_budget)
+VALUES (
+    1,
+    1500000,
+    (SELECT COALESCE(SUM(salary), 0) FROM emp)
+);
+
+SELECT * FROM budget;
+
+CREATE OR REPLACE FUNCTION update_budget_used_amount()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO audit_log(action, emp_id)
-  VALUES (TG_OP, NEW.id);
-  RETURN NEW;
+    UPDATE budget
+    SET used_budget = (SELECT COALESCE(SUM(salary), 0) FROM emp)
+    WHERE budget_id = 1;
+
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER after_insert_emp
-AFTER INSERT ON employees
+CREATE TRIGGER trg_emp_after_insert_budget
+AFTER INSERT ON emp
 FOR EACH ROW
-EXECUTE FUNCTION log_action();
+EXECUTE FUNCTION update_budget_used_amount();
 
-
-INSERT INTO employees(name, salary) VALUES ('Ansh', 50000);
-
-
-SELECT * FROM audit_log;
-
-
-CREATE OR REPLACE FUNCTION check_salary()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.salary < 0 THEN
-    RAISE EXCEPTION 'Salary cannot be negative';
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER before_insert_emp
-BEFORE INSERT ON employees
+CREATE TRIGGER trg_emp_after_salary_update_budget
+AFTER UPDATE OF salary ON emp
 FOR EACH ROW
-EXECUTE FUNCTION check_salary();
+EXECUTE FUNCTION update_budget_used_amount();
 
-
-
-
-CREATE OR REPLACE FUNCTION prevent_delete()
-RETURNS TRIGGER AS $$
-BEGIN
-  RAISE EXCEPTION 'Delete not allowed!';
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER before_delete_emp
-BEFORE DELETE ON employees
+CREATE TRIGGER trg_emp_after_delete_budget
+AFTER DELETE ON emp
 FOR EACH ROW
-EXECUTE FUNCTION prevent_delete();
+EXECUTE FUNCTION update_budget_used_amount();
 
+INSERT INTO emp(fname, lname, salary, locations, age)
+VALUES ('test', 'employee', 25000, 'BASERA', 21);
 
+SELECT * FROM emp;
+SELECT * FROM budget;
 
-CREATE OR REPLACE FUNCTION log_delete()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO audit_log(action, emp_id)
-  VALUES ('DELETE', OLD.id);
-  RETURN OLD;
-END;
-$$ LANGUAGE plpgsql;
+UPDATE emp
+SET salary = 30000
+WHERE fname = 'test'
+  AND lname = 'employee';
 
-CREATE TRIGGER after_delete_emp
-AFTER DELETE ON employees
-FOR EACH ROW
-EXECUTE FUNCTION log_delete();
-
-
-
-ALTER TRIGGER after_insert_emp ON employees
-RENAME TO after_insert_employee;
-
-
-DROP TRIGGER after_insert_employee ON employees;
-
-
-
-ALTER TABLE employees DISABLE TRIGGER after_delete_emp;
+SELECT * FROM emp;
+SELECT * FROM budget;
