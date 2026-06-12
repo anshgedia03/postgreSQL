@@ -9,7 +9,7 @@ CREATE TABLE players (
   team_id INT REFERENCES team(id)
 );
 
-
+-- 
 INSERT INTO team (team_name) VALUES
 ('India'),
 ('Australia'),
